@@ -64,12 +64,24 @@ classdef EEGViewer < handle
             end
             
             if ~obj.isepoched % DELETED +1s and -1s because I didn't understand what they did. Maybe problem?
-                startFrame = obj.state.second * obj.dataFrequency + 1; % +1 adds to the frame because matlab starts with 1
-                endFrame = startFrame + obj.dataFrequency * obj.settings.timeRange + 1;
-                obj.state.plotData = obj.data(startFrame:endFrame, obj.state.electrodes(1,:))'; % Changing dimensions
-                obj.state.timeData = linspace(startFrame/obj.dataFrequency, endFrame/obj.dataFrequency, ...
-                    endFrame - startFrame + 1); %casova osa   
+               obj.moveplottime(0); % sets up the plot at second 0
             end
+        end
+        
+        function moveplottime(obj, time)
+            
+            %checks for the time
+            obj.state.second = obj.state.second + time;
+            if (obj.state.second < 0) obj.state.second = 0; end %if wa want to back before 0
+            
+            startFrame = obj.state.second * obj.dataFrequency + 1; % +1 adds to the frame because matlab starts with 1
+            endFrame = startFrame + obj.dataFrequency * obj.settings.timeRange + 1;
+            
+            if (endFrame > numel(obj.timestamps)) endFrame = numel(obj.timestamps); end %if we wanted to move beyond length of data
+            
+            obj.state.plotData = obj.data(startFrame:endFrame, obj.state.electrodes(1,:))';
+            obj.state.timeData = linspace(startFrame/obj.dataFrequency, endFrame/obj.dataFrequency, ...
+                endFrame - startFrame + 1); %casova osa
         end
         
         function draw(obj)
