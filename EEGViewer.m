@@ -10,18 +10,16 @@ classdef EEGViewer < handle
     %       Others - Lukáš "hejtmy" Hejtmánek
     
     properties
-        data; %double matrix as channels x data
-        timestamps;
-        channelNames;
-        dataFrequency;
+        data; %double matrix as channels x sample
+        timestamps; %timestamps of hte same length as samples in the data matrix
+        channelNames;   %optional description for electrodes
+        dataFrequency; %helper for calculating indexes of subsetted data
         
-        settings;
+        settings; %struct with settings - more in defaultplotsettings
         
-        state;
+        state;  %keeps track of the current plot state
         
-        EEGplot;
-        
-        plotES; %[electrodes second range(y) timeRange allchannels?(bool)]
+        EEGplot; % plot to display and modify
     end
     
     methods
@@ -44,11 +42,6 @@ classdef EEGViewer < handle
             obj.draw;
         end
         
-        function plotepochs(obj)
-            
-        end
-        
-        
         %% functional part :)
         function setup(obj)
             if obj.settings.plotAllChannels == 1
@@ -70,14 +63,15 @@ classdef EEGViewer < handle
         
         function changevoltage(obj, mV)
             obj.settings.voltageRange = obj.settings.voltageRange + mV;
-            if (obj.settings.voltageRange <= 10) obj.settings.voltageRange = 10; end
-            if (obj.settings.voltageRange >= 1000) obj.settings.voltageRange = 1000; end
+            if (obj.settings.voltageRange <= 10), obj.settings.voltageRange = 10; end
+            if (obj.settings.voltageRange >= 1000), obj.settings.voltageRange = 1000; end
         end
         
         function moveplottime(obj, time)
             
             %checks for the time
             obj.state.second = obj.state.second + time;
+            
             lastPossibleSecond = numel(obj.timestamps)/obj.dataFrequency - obj.settings.timeRange; %could be made static
             if (obj.state.second < 0) obj.state.second = 0; end %if wa want to back before 0
             if (obj.state.second >= lastPossibleSecond) %if we want to move beyond length of data
@@ -98,13 +92,16 @@ classdef EEGViewer < handle
             else
                 figure(obj.EEGplot);
             end
+            
             % modified from https://uk.mathworks.com/matlabcentral/newsreader/view_thread/294163            
             minY = repmat(-obj.settings.voltageRange, [size(obj.state.plotData, 1), 1]);
             maxY = repmat(+obj.settings.voltageRange, [size(obj.state.plotData, 1), 1]);                        
             shift = cumsum([0; abs(maxY(1:end - 1)) + abs(minY(2:end))]);
             shift = repmat(shift, 1, size(obj.state.plotData, 2));
+            
             colors = ['b', 'k'];
             iColor = 0;
+            
             for electrode = obj.state.electrodes
                 electrodeRange = (electrode(2):electrode(1)) - obj.state.electrodes(2, 1) + 1;
                 electrodeRange2 = setdiff(electrodeRange, obj.state.rejectedChannels - obj.state.electrodes(2, 1) + 1); %non rejected channels  - zde se pocitaji od 1 proto odecitam els
@@ -112,6 +109,7 @@ classdef EEGViewer < handle
                 hold on;
                 iColor = 1 - iColor;
             end
+            
             hold off;
             set(gca, 'ytick', shift(:, 1),'yticklabel', obj.state.upperChannel:-1:obj.state.bottomChannel); %znacky a popisky osy y
             grid on;
@@ -123,6 +121,23 @@ classdef EEGViewer < handle
             
             % -------- KEY PRESS HANDLE  handle na obrazek a nastaveni grafu -----------------
             set(obj.EEGplot, 'KeyPressFcn', @obj.plotkeyactions); 
+             
+            % ----- NAMING CHANNELS ------
+            return;
+            % so far I have little idea of what this does - so I'm keeping
+            % it as it is :)
+            for j = 1:size(shift, 1)
+                yshift = shift(end, 1) - shift(j, 1);
+                
+                text(obj.state.timeData(end), yshift,[ ' ' obj.CH.H.channels(1, obj.state.bottomChannel + j-1).neurologyLabel, ...
+                    ',', obj.CH.H.channels(1, obj.state.bottomChannel + j - 1).ass_brainAtlas]);
+                text(obj.state.timeData(1) - size(obj.data, 2)/obj.dataFrequency/10, yshift, ...
+                    [ ' ' obj.CH.H.channels(1, obj.state.bottomChannel + j - 1).name]);
+                
+                if find(obj.state.rejectedChannels == obj.state.bottomChannel - 1 + j) %oznacim vyrazene kanaly
+                    text(obj.state.timeData(1), yshift + 20, ' REJECTED');
+                end
+            end 
         end
     end
     
@@ -134,19 +149,20 @@ classdef EEGViewer < handle
             [~, ~, nEpochs] = datasize(obj);
             bool = nEpochs > 1;
         end
+        
         function plotkeyactions(obj, ~, eventDat)
             switch eventDat.Key
                 case 'rightarrow' 
                     obj.moveplottime(5);
                 case 'leftarrow'
                     obj.moveplottime(-5);
-                case 'home'     % na zacatek zaznamu              
+                case 'home'          
                     obj.moveplottime(-Inf);
-                case 'end'     % na konec zaznamu 
+                case 'end' 
                     obj.moveplottime(Inf);
-                case 'add'     %signal mensi - vetsi rozliseni 
+                case 'add'
                     obj.changevoltage(10);
-                case 'subtract' %signal vetsi - mensi rozliseni   
+                case 'subtract'  
                     obj.changevoltage(-10);
                 otherwise
                     disp(['You just pressed: ' eventDat.Key]);                      
@@ -154,13 +170,4 @@ classdef EEGViewer < handle
             obj.draw;
         end
     end 
-end
-
-%[electrodes second range(y) timeRange allchannels?(bool)]
-function [settings] = defaultplotsettings
-    settings = struct();
-    settings.electrodes = [];
-    settings.voltageRange = 150;
-    settings.timeRange = 5;
-    settings.plotAllChannels = 1;
 end
