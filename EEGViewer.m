@@ -68,6 +68,12 @@ classdef EEGViewer < handle
             end
         end
         
+        function changevoltage(obj, mV)
+            obj.settings.voltageRange = obj.settings.voltageRange + mV;
+            if (obj.settings.voltageRange <= 10) obj.settings.voltageRange = 10; end
+            if (obj.settings.voltageRange >= 1000) obj.settings.voltageRange = 1000; end
+        end
+        
         function moveplottime(obj, time)
             
             %checks for the time
@@ -138,6 +144,13 @@ classdef EEGViewer < handle
                     obj.moveplottime(-Inf);
                 case 'end'     % na konec zaznamu 
                     obj.moveplottime(Inf);
+                case 'add'     %signal mensi - vetsi rozliseni 
+                    obj.changevoltage(10);
+                case 'subtract' %signal vetsi - mensi rozliseni   
+                    obj.changevoltage(-10);
+                otherwise
+                    disp(['You just pressed: ' eventDat.Key]);                      
+            end
             obj.draw;
         end
     end 
