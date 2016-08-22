@@ -112,6 +112,9 @@ classdef EEGViewer < handle
             %ylabel(['Electrode ' num2str(obj.state.electrodes) '/' num2str(numel(obj.state.electrodes)) ]);
             text(obj.state.timeData(1), -shift(2, 1),[ 'resolution +/-' num2str(obj.settings.voltageRange) 'mV']);         
             xlim([obj.state.timeData(1) obj.state.timeData(end)]);
+            
+            % -------- KEY PRESS HANDLE  handle na obrazek a nastaveni grafu -----------------
+            set(obj.EEGplot, 'KeyPressFcn', @obj.plotkeyactions); 
         end
     end
     
@@ -122,6 +125,18 @@ classdef EEGViewer < handle
         function bool = isepoched(obj)
             [~, ~, nEpochs] = datasize(obj);
             bool = nEpochs > 1;
+        end
+        function plotkeyactions(obj, ~, eventDat)
+            switch eventDat.Key
+               case 'rightarrow' 
+                   obj.moveplottime(5);
+                   obj.draw;
+               case 'leftarrow'
+                  obj.moveplottime(-5);
+                  obj.draw;
+               otherwise
+                   disp(['You just pressed: ' eventDat.Key]);                      
+           end
         end
     end 
 end
