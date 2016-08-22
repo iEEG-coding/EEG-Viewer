@@ -51,7 +51,6 @@ classdef EEGViewer < handle
         
         %% functional part :)
         function setup(obj)
-
             if obj.settings.plotAllChannels == 1
                 obj.state.bottomChannel = 1;
                 %[upperChannel, ~, ~] = floor(obj.datasize()/2); % prone to error
@@ -67,7 +66,7 @@ classdef EEGViewer < handle
             if ~obj.isepoched % DELETED +1s and -1s because I didn't understand what they did. Maybe problem?
                 startFrame = obj.state.second * obj.dataFrequency + 1; % +1 adds to the frame because matlab starts with 1
                 endFrame = startFrame + obj.dataFrequency * obj.settings.timeRange + 1;
-                obj.state.plotData = obj.data(startFrame:endFrame, obj.state.electrodes)'; % Changing dimensions
+                obj.state.plotData = obj.data(startFrame:endFrame, obj.state.electrodes(1,:))'; % Changing dimensions
                 obj.state.timeData = linspace(startFrame/obj.dataFrequency, endFrame/obj.dataFrequency, ...
                     endFrame - startFrame + 1); %casova osa   
             end
