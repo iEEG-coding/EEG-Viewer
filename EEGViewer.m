@@ -3,11 +3,11 @@ classdef EEGViewer < handle
     %rejecting signal and exporting and importing such data
     %   Detailed explanation goes here
     %   
-    %   Working from the iEEG_scripts developed by Mgr. Kamil Vlèek Ph.D.
-    %   here 
+    %   Working from the iEEG_scripts developed by Mgr. Kamil VlÄek Ph.D.
+    %   here https://github.com/kamilvlcek/iEEG_scripts
     %   Collaborators
-    %       Lead developper - Mgr. Kamil Vlèek Ph.D.
-    %       Others - Lukáš "hejtmy" Hejtmánek
+    %       Lead developper - Mgr. Kamil VlÃ¨ek Ph.D.
+    %       Others - LukÃ¡Å¡ "hejtmy" HejtmÃ¡nek
     
     properties
         data; %double matrix as channels x sample
