@@ -3,7 +3,7 @@ classdef EEGViewer < handle
     %rejecting signal and exporting and importing such data
     %   Detailed explanation goes here
     %   
-    %   Working from the iEEG_scripts developed by Mgr. Kamil Vlček Ph.D.
+    %   Working from the iEEG_scripts developed by Mgr. Kamil Vl�?ek Ph.D.
     %   here https://github.com/kamilvlcek/iEEG_scripts
     %   Collaborators
     %       Lead developper - Mgr. Kamil Vlèek Ph.D.
@@ -12,7 +12,7 @@ classdef EEGViewer < handle
     properties
         data; %double matrix as channels x sample
         timestamps; %timestamps of hte same length as samples in the data matrix
-        channelNames;   %optional description for electrodes
+        channelNames;   %optional description for channels
         dataFrequency; %helper for calculating indexes of subsetted data
         
         settings; %struct with settings - more in defaultplotsettings
@@ -31,15 +31,20 @@ classdef EEGViewer < handle
             obj.dataFrequency = frequencyfromtimestamps(timestamps);
             
             obj.settings = defaultplotsettings;
-            obj.state.second=  0;
+            obj.state.second = 0;
             obj.state.rejectedChannels = [];
         end
         
-        function plotelectrodes(obj, electrodes)
-            %validation
-            obj.plotSettings.electrodes = electrodes;
-            obj.setup;
-            obj.draw;
+        function plotchannels(obj, channels)
+          %validation
+          obj.plotSettings.channels = channels;
+          obj.setup;
+          obj.draw;
+        end
+        
+        function plotall(obj)
+          obj.setup;
+          obj.draw;
         end
         
         %% functional part :)
@@ -48,12 +53,12 @@ classdef EEGViewer < handle
                 obj.state.bottomChannel = 1;
                 %[upperChannel, ~, ~] = floor(obj.datasize()/2); % prone to error
                 [~, obj.state.upperChannel, ~] = obj.datasize;
-                obj.state.electrodes = obj.state.bottomChannel:obj.state.upperChannel;
+                obj.state.channels = obj.state.bottomChannel:obj.state.upperChannel;
                 % NO IDEA WHAT THIS DOES
-                obj.state.electrodes(2, 1) = 1; 
-                obj.state.electrodes(2, 2:end) = obj.state.electrodes(1, 1:end - 1) + 1;
+                obj.state.channels(2, 1) = 1; 
+                obj.state.channels(2, 2:end) = obj.state.channels(1, 1:end - 1) + 1;
             else 
-                obj.state.electrodes = obj.settings.electrodes;
+                obj.state.channels = obj.settings.channels;
             end
             
             if ~obj.isepoched % DELETED +1s and -1s because I didn't understand what they did. Maybe problem?
@@ -81,14 +86,14 @@ classdef EEGViewer < handle
             startFrame = obj.state.second * obj.dataFrequency + 1; % +1 adds to the frame because matlab starts with 1
             endFrame = startFrame + obj.dataFrequency * obj.settings.timeRange + 1;
             
-            obj.state.plotData = obj.data(startFrame:endFrame, obj.state.electrodes(1, :))';
+            obj.state.plotData = obj.data(startFrame:endFrame, obj.state.channels(1, :))';
             obj.state.timeData = linspace(startFrame/obj.dataFrequency, endFrame/obj.dataFrequency, ...
                 endFrame - startFrame + 1); %casova osa
         end
         
         function draw(obj)
-            if isempty(obj.EEGplot) % new plot
-                obj.EEGplot = figure('Name', 'Electrode Plot');             
+            if isempty(obj.EEGplot) || ~isvalid(obj.EEGplot) % new plot
+                obj.EEGplot = figure('Name', 'Channel Plot');             
             else
                 figure(obj.EEGplot);
             end
@@ -102,10 +107,10 @@ classdef EEGViewer < handle
             colors = ['b', 'k'];
             iColor = 0;
             
-            for electrode = obj.state.electrodes
-                electrodeRange = (electrode(2):electrode(1)) - obj.state.electrodes(2, 1) + 1;
-                electrodeRange2 = setdiff(electrodeRange, obj.state.rejectedChannels - obj.state.electrodes(2, 1) + 1); %non rejected channels  - zde se pocitaji od 1 proto odecitam els
-                plot(obj.state.timeData, bsxfun(@minus, shift(end, :), shift(electrodeRange2, :)) + obj.state.plotData(electrodeRange2,:), colors(iColor + 1));  
+            for channel = obj.state.channels
+                channelRange = (channel(2):channel(1)) - obj.state.channels(2, 1) + 1;
+                channelRange2 = setdiff(channelRange, obj.state.rejectedChannels - obj.state.channels(2, 1) + 1); %non rejected channels  - zde se pocitaji od 1 proto odecitam els
+                plot(obj.state.timeData, bsxfun(@minus, shift(end, :), shift(channelRange2, :)) + obj.state.plotData(channelRange2,:), colors(iColor + 1));  
                 hold on;
                 iColor = 1 - iColor;
             end
@@ -115,7 +120,7 @@ classdef EEGViewer < handle
             grid on;
             
             ylim([min(min(shift)) - obj.settings.voltageRange, max(max(shift)) + obj.settings.voltageRange]); %rozsah osy y
-            %ylabel(['Electrode ' num2str(obj.state.electrodes) '/' num2str(numel(obj.state.electrodes)) ]);
+            %ylabel(['Electrode ' num2str(obj.state.channels) '/' num2str(numel(obj.state.channels)) ]);
             text(obj.state.timeData(1), -shift(2, 1),[ 'resolution +/-' num2str(obj.settings.voltageRange) 'mV']);         
             xlim([obj.state.timeData(1) obj.state.timeData(end)]);
             
@@ -145,6 +150,7 @@ classdef EEGViewer < handle
         function[nSamples, nChannels, nEpochs] = datasize(obj)
             [nSamples, nChannels, nEpochs] = size(obj.data);
         end
+        
         function bool = isepoched(obj)
             [~, ~, nEpochs] = datasize(obj);
             bool = nEpochs > 1;
