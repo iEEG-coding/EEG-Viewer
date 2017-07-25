@@ -7,5 +7,7 @@ function [ settings ] = defaultplotsettings
     settings.voltageRange = 150;
     settings.timeRange = 5;
     settings.plotAllChannels = 1;
+    settings.eventColor = 'red';
+    settings.grid = true;
 end
 

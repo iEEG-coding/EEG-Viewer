@@ -12,6 +12,7 @@ classdef EEGViewer < handle
     properties
         data; %double matrix as channels x sample
         timestamps; %timestamps of hte same length as samples in the data matrix
+        eventTimes;
         channelNames;   %optional description for channels
         dataFrequency; %helper for calculating indexes of subsetted data
         
@@ -27,6 +28,7 @@ classdef EEGViewer < handle
             %parse the input
             obj.data = data;
             obj.timestamps = timestamps;
+            obj.eventTimes = [];
             % calculate frequency
             obj.dataFrequency = frequencyfromtimestamps(timestamps);
             
@@ -40,6 +42,13 @@ classdef EEGViewer < handle
           obj.plotSettings.channels = channels;
           obj.setup;
           obj.draw;
+        end
+        
+        function addevents(obj, eventTimes, color)
+          obj.eventTimes = eventTimes;
+          if nargin >2 
+            obj.settings.eventColor = color;
+          end
         end
         
         function plotall(obj)
@@ -92,13 +101,21 @@ classdef EEGViewer < handle
         end
         
         function draw(obj)
-            if isempty(obj.EEGplot) || ~isvalid(obj.EEGplot) % new plot
-                obj.EEGplot = figure('Name', 'Channel Plot');             
-            else
+            if matlabversion > 2014
+              if ~isempty(obj.EEGplot) && isvalid(obj.EEGplot) 
                 figure(obj.EEGplot);
+              else
+                obj.EEGplot = figure('Name', 'Channel Plot');
+              end
+            else
+              if ~isempty(obj.EEGplot) && isnumeric(obj.EEGplot) 
+                figure(obj.EEGplot);
+              else
+                obj.EEGplot = figure('Name', 'Channel Plot');
+              end
             end
-            
-            % modified from https://uk.mathworks.com/matlabcentral/newsreader/view_thread/294163            
+
+            % modified from https://uk.mathworks.com/matlabcentral/newsreader/view_thread/294163
             minY = repmat(-obj.settings.voltageRange, [size(obj.state.plotData, 1), 1]);
             maxY = repmat(+obj.settings.voltageRange, [size(obj.state.plotData, 1), 1]);                        
             shift = cumsum([0; abs(maxY(1:end - 1)) + abs(minY(2:end))]);
@@ -107,38 +124,50 @@ classdef EEGViewer < handle
             colors = ['b', 'k'];
             iColor = 0;
             
+            % ----- MAIN PLOTTING ------
+            hold on;
             for channel = obj.state.channels
                 channelRange = (channel(2):channel(1)) - obj.state.channels(2, 1) + 1;
                 channelRange2 = setdiff(channelRange, obj.state.rejectedChannels - obj.state.channels(2, 1) + 1); %non rejected channels  - zde se pocitaji od 1 proto odecitam els
                 plot(obj.state.timeData, bsxfun(@minus, shift(end, :), shift(channelRange2, :)) + obj.state.plotData(channelRange2,:), colors(iColor + 1));  
-                hold on;
                 iColor = 1 - iColor;
             end
-            
             hold off;
-            set(gca, 'ytick', shift(:, 1),'yticklabel', obj.state.upperChannel:-1:obj.state.bottomChannel); %znacky a popisky osy y
-            grid on;
             
+            set(gca, 'ytick', shift(:, 1), 'yticklabel', obj.state.upperChannel:-1:obj.state.bottomChannel); %znacky a popisky osy y
+            
+            if obj.settings.grid, 
+              grid on; 
+            else
+              grid off;
+            end
+                        
+            % ----- DEFINING Y AND X LIMITS ------
             ylim([min(min(shift)) - obj.settings.voltageRange, max(max(shift)) + obj.settings.voltageRange]); %rozsah osy y
             %ylabel(['Electrode ' num2str(obj.state.channels) '/' num2str(numel(obj.state.channels)) ]);
             text(obj.state.timeData(1), -shift(2, 1),[ 'resolution +/-' num2str(obj.settings.voltageRange) 'mV']);         
             xlim([obj.state.timeData(1) obj.state.timeData(end)]);
+            
+            
+            % ----- EVENT PLOTTING ------
+            % needs to be after defining limits
+            if ~isempty(obj.eventTimes)
+              presentEvents = obj.eventTimes(obj.eventTimes < obj.state.timeData(end) && obj.eventTimes > obj.state.timeData(1));
+              if any(presentEvents), gridxy(presentEvents, 'color', obj.settings.eventColor); end
+            end
             
             % -------- KEY PRESS HANDLE  handle na obrazek a nastaveni grafu -----------------
             set(obj.EEGplot, 'KeyPressFcn', @obj.plotkeyactions); 
              
             % ----- NAMING CHANNELS ------
             return;
-            % so far I have little idea of what this does - so I'm keeping
-            % it as it is :)
+            % so far I have little idea of what this does - so I'm keeping it as it is :)
             for j = 1:size(shift, 1)
                 yshift = shift(end, 1) - shift(j, 1);
-                
                 text(obj.state.timeData(end), yshift,[ ' ' obj.CH.H.channels(1, obj.state.bottomChannel + j-1).neurologyLabel, ...
                     ',', obj.CH.H.channels(1, obj.state.bottomChannel + j - 1).ass_brainAtlas]);
                 text(obj.state.timeData(1) - size(obj.data, 2)/obj.dataFrequency/10, yshift, ...
                     [ ' ' obj.CH.H.channels(1, obj.state.bottomChannel + j - 1).name]);
-                
                 if find(obj.state.rejectedChannels == obj.state.bottomChannel - 1 + j) %oznacim vyrazene kanaly
                     text(obj.state.timeData(1), yshift + 20, ' REJECTED');
                 end
