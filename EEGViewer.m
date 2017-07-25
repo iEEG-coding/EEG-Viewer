@@ -152,7 +152,7 @@ classdef EEGViewer < handle
             % ----- EVENT PLOTTING ------
             % needs to be after defining limits
             if ~isempty(obj.eventTimes)
-              presentEvents = obj.eventTimes(obj.eventTimes < obj.state.timeData(end) && obj.eventTimes > obj.state.timeData(1));
+              presentEvents = obj.eventTimes(obj.eventTimes < obj.state.timeData(end) & obj.eventTimes > obj.state.timeData(1));
               if any(presentEvents), gridxy(presentEvents, 'color', obj.settings.eventColor); end
             end
             
